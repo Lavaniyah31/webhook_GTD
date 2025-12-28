@@ -283,7 +283,6 @@
     <script>
         let lastId = 0;
         let isFirstLoad = true;
-        let sendCount = 0;
 
         // Fetch notifications in real-time
         async function fetchNotifications() {
@@ -292,7 +291,8 @@
                 const data = await response.json();
                 
                 if (data.notifications && data.notifications.length > 0) {
-                    document.getElementById('receive-count').textContent = data.total;
+                    document.getElementById('receive-count').textContent = data.total_received;
+                    document.getElementById('send-count').textContent = data.total_sent;
 
                     const latestId = data.notifications[0].id;
                     const hasNew = latestId > lastId;
@@ -362,6 +362,9 @@
                 }
             }
 
+            // Add source identifier for dashboard-sent webhooks
+            webhookData.source = 'dashboard';
+
             try {
                 addLog(`⏳ Sending webhook: "${title}"...`, 'info');
                 
@@ -378,8 +381,6 @@
                 const result = await response.json();
                 
                 if (response.ok) {
-                    sendCount++;
-                    document.getElementById('send-count').textContent = sendCount;
                     addLog(`✅ Webhook sent successfully! ID: ${result.id}`, 'success');
                     
                     // Clear form

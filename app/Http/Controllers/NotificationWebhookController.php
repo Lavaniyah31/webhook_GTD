@@ -19,7 +19,8 @@ class NotificationWebhookController extends Controller
             $notification = Notification::create([
                 'title'   => $request->input('title', 'New Notification'),
                 'message' => $request->input('message'),
-                'data'    => $request->all()
+                'data'    => $request->all(),
+                'source'  => $request->input('source', 'external')
             ]);
 
             // Forward webhook to external services

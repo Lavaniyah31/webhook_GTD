@@ -9,22 +9,12 @@ Route::get('/', function () {
 
 /*
 |--------------------------------------------------------------------------
-| COMPLETE WEBHOOK DASHBOARD
+| WEBHOOK DASHBOARD - Send & Receive in Real-Time
 |--------------------------------------------------------------------------
-| Test both sending AND receiving webhooks in real-time
+| Complete testing interface for webhooks
 */
 Route::get('/dashboard', function () {
     return view('webhook-dashboard');
-});
-
-/*
-|--------------------------------------------------------------------------
-| REAL-TIME NOTIFICATIONS PAGE
-|--------------------------------------------------------------------------
-| Live dashboard that auto-updates when new webhooks arrive
-*/
-Route::get('/notifications-live', function () {
-    return view('notifications-realtime');
 });
 
 /*
@@ -35,9 +25,13 @@ Route::get('/notifications-live', function () {
 */
 Route::get('/notifications', function () {
     $notifications = Notification::latest()->get();
+    $totalSent = Notification::where('source', 'dashboard')->count();
+    $totalReceived = Notification::where('source', 'external')->count();
     
     return response()->json([
         'total' => $notifications->count(),
+        'total_sent' => $totalSent,
+        'total_received' => $totalReceived,
         'notifications' => $notifications
     ], 200, [], JSON_PRETTY_PRINT);
 });

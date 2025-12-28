@@ -368,7 +368,7 @@
             try {
                 addLog(`⏳ Sending webhook: "${title}"...`, 'info');
                 
-                const response = await fetch('/api/webhook/notification', {
+                const response = await fetch('/api/webhook/send', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -382,6 +382,7 @@
                 
                 if (response.ok) {
                     addLog(`✅ Webhook sent successfully! ID: ${result.id}`, 'success');
+                    addLog(`📤 Forwarded to ${result.forwarded_to} endpoint(s)`, 'success');
                     
                     // Clear form
                     document.getElementById('title').value = '';

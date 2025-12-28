@@ -3,21 +3,23 @@
 return [
     /*
     |--------------------------------------------------------------------------
-    | External Webhook URLs - WHERE TO SEND WEBHOOKS
+    | Webhook Endpoints Configuration
     |--------------------------------------------------------------------------
     |
-    | IMPORTANT: Add URLs where you want to SEND/FORWARD webhooks
-    | 
-    | HOW IT WORKS:
-    | When your app RECEIVES a webhook → It automatically SENDS that 
-    | same data to all URLs listed below.
+    | Configure external webhook URLs where your app will SEND webhooks.
+    | When you receive or send a webhook, it will be forwarded to all URLs below.
     |
-    | TO TEST SENDING:
-    | 1. Go to https://webhook.site
-    | 2. Copy your unique URL (e.g., https://webhook.site/abc-123)
-    | 3. Add it below
-    | 4. Send a webhook to your Laravel app
-    | 5. Check webhook.site - you'll see the forwarded data!
+    | TO ADD A WEBHOOK ENDPOINT:
+    | 1. Go to https://webhook.site (or any webhook receiver)
+    | 2. Copy the unique URL provided
+    | 3. Add it to the 'external_urls' array below
+    | 4. Save this file
+    |
+    | Example:
+    | 'external_urls' => [
+    |     'https://webhook.site/your-unique-id',
+    |     'https://your-app.com/api/webhook',
+    | ],
     |
     */
     'external_urls' => [

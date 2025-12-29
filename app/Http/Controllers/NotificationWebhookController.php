@@ -27,8 +27,17 @@ class NotificationWebhookController extends Controller
                 'source'  => $request->input('source', 'external')
             ]);
 
+            // Enrich webhook data with metadata
+            $enrichedData = array_merge($request->all(), [
+                'webhook_id' => $notification->id,
+                'webhook_type' => 'notification_received',
+                'received_at' => now()->toIso8601String(),
+                'app_name' => config('app.name'),
+                'processing_status' => 'completed'
+            ]);
+
             // Forward to configured webhook endpoints
-            $this->sendToWebhooks($request->all());
+            $this->sendToWebhooks($enrichedData);
 
             return response()->json([
                 'status' => 'success',
@@ -66,8 +75,18 @@ class NotificationWebhookController extends Controller
                 'source'  => 'dashboard'
             ]);
 
+            // Enrich webhook data with metadata
+            $enrichedData = array_merge($request->all(), [
+                'webhook_id' => $notification->id,
+                'webhook_type' => 'notification_sent',
+                'sent_at' => now()->toIso8601String(),
+                'app_name' => config('app.name'),
+                'sender' => 'dashboard',
+                'processing_status' => 'completed'
+            ]);
+
             // Send to configured webhook endpoints
-            $results = $this->sendToWebhooks($request->all());
+            $results = $this->sendToWebhooks($enrichedData);
 
             return response()->json([
                 'status' => 'success',

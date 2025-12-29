@@ -249,15 +249,29 @@
                     <button type="submit" class="btn">🚀 Send Webhook</button>
                 </form>
 
+                <div style="margin-top: 20px; padding-top: 20px; border-top: 2px solid #e2e8f0;">
+                    <h3 style="margin-bottom: 15px; color: #2d3748;">Test Receive Webhook</h3>
+                    <p style="color: #718096; font-size: 14px; margin-bottom: 10px;">Simulate receiving a webhook from an external service</p>
+                    <button type="button" class="btn" id="test-receive-btn" style="background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);">
+                        📥 Simulate External Webhook
+                    </button>
+                </div>
+
                 <div class="webhook-log" id="send-log">
-                    <strong>📋 Send Log:</strong>
+                    <strong>📋 Activity Log:</strong>
                     <div id="log-entries"></div>
                 </div>
             </div>
 
             <!-- RIGHT: Receive Webhooks -->
             <div class="card">
-                <h2>📥 Received Webhooks <span class="pulse"></span></h2>
+                <h2>
+                    📥 Received Webhooks 
+                    <span class="pulse"></span>
+                    <span id="live-status" style="font-size: 14px; color: #48bb78; margin-left: 10px;">
+                        🟢 Live • Auto-refreshing every 2s
+                    </span>
+                </h2>
                 
                 <div class="status">
                     <div class="status-card receive">
@@ -268,6 +282,10 @@
                         <div class="status-label">Total Sent</div>
                         <div class="status-value" id="send-count">0</div>
                     </div>
+                </div>
+
+                <div style="text-align: center; padding: 10px; background: #f7fafc; border-radius: 8px; margin-bottom: 15px; font-size: 13px; color: #4a5568;">
+                    <span id="last-update">Last updated: Never</span>
                 </div>
 
                 <div class="notifications" id="notifications-container">
@@ -283,6 +301,9 @@
     <script>
         let lastId = 0;
         let isFirstLoad = true;
+        let lastReceivedCount = 0;
+        let lastSentCount = 0;
+        let lastRenderedHtml = '';
 
         // Fetch notifications in real-time
         async function fetchNotifications() {
@@ -291,18 +312,52 @@
                 const data = await response.json();
                 
                 if (data.notifications && data.notifications.length > 0) {
-                    document.getElementById('receive-count').textContent = data.total_received;
-                    document.getElementById('send-count').textContent = data.total_sent;
-
                     const latestId = data.notifications[0].id;
                     const hasNew = latestId > lastId;
                     
-                    displayNotifications(data.notifications, hasNew && !isFirstLoad);
-                    lastId = latestId;
+                    // Only update counters if values actually changed
+                    if (data.total_received !== lastReceivedCount) {
+                        document.getElementById('receive-count').textContent = data.total_received;
+                        lastReceivedCount = data.total_received;
+                    }
+                    
+                    if (data.total_sent !== lastSentCount) {
+                        document.getElementById('send-count').textContent = data.total_sent;
+                        lastSentCount = data.total_sent;
+                    }
+                    
+                    // Only update timestamp when there's actually new data
+                    if (hasNew || isFirstLoad) {
+                        const now = new Date();
+                        document.getElementById('last-update').textContent = 
+                            `Last updated: ${now.toLocaleTimeString()}`;
+                        
+                        // Only re-render notifications if there's new data
+                        displayNotifications(data.notifications, hasNew && !isFirstLoad);
+                    }
+                    
+                    if (hasNew) {
+                        lastId = latestId;
+                        
+                        if (!isFirstLoad) {
+                            playNotificationSound();
+                        }
+                    }
+                    
                     isFirstLoad = false;
-
-                    if (hasNew && !isFirstLoad) {
-                        playNotificationSound();
+                } else {
+                    // No notifications yet - only update if changed
+                    if (lastReceivedCount !== 0) {
+                        document.getElementById('receive-count').textContent = 0;
+                        lastReceivedCount = 0;
+                    }
+                    if (lastSentCount !== 0) {
+                        document.getElementById('send-count').textContent = 0;
+                        lastSentCount = 0;
+                    }
+                    if (isFirstLoad) {
+                        document.getElementById('last-update').textContent = 'Waiting for webhooks...';
+                        isFirstLoad = false;
                     }
                 }
             } catch (error) {
@@ -318,24 +373,41 @@
                 return;
             }
 
-            container.innerHTML = notifications.map((notif, index) => `
-                <div class="notification ${index === 0 && highlightNew ? 'new' : ''}">
+            const newHtml = notifications.map((notif, index) => {
+                const data = notif.data || {};
+                const isNew = index === 0 && highlightNew;
+                const sourceIcon = notif.source === 'dashboard' ? '📤' : '📥';
+                const sourceLabel = notif.source === 'dashboard' ? 'SENT' : 'RECEIVED';
+                const sourceColor = notif.source === 'dashboard' ? '#3182ce' : '#38a169';
+                
+                return `
+                <div class="notification ${isNew ? 'new' : ''}" style="position: relative;">
                     <div class="notification-header">
                         <div class="notification-title">
-                            ${index === 0 && highlightNew ? '🆕 ' : ''}${notif.title || 'Notification'}
+                            ${isNew ? '🆕 ' : ''}${notif.title || 'Notification'}
                         </div>
                         <div class="notification-time">
+                            <span style="background: ${sourceColor}; color: white; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; margin-right: 8px;">
+                                ${sourceIcon} ${sourceLabel}
+                            </span>
                             ID: ${notif.id} • ${new Date(notif.created_at).toLocaleString()}
                         </div>
                     </div>
                     <div class="notification-message">
                         ${notif.message || 'No message'}
                     </div>
-                    <div class="notification-data">
-                        ${JSON.stringify(notif.data, null, 2)}
+                    <div class="notification-data" style="max-height: 200px; overflow-y: auto;">
+                        <strong>📦 Webhook Data:</strong><br>
+                        ${JSON.stringify(data, null, 2)}
                     </div>
                 </div>
-            `).join('');
+            `}).join('');
+            
+            // Only update DOM if HTML actually changed (prevents flickering)
+            if (newHtml !== lastRenderedHtml) {
+                container.innerHTML = newHtml;
+                lastRenderedHtml = newHtml;
+            }
         }
 
         // Send webhook form
@@ -391,6 +463,43 @@
                     
                     // Play success sound
                     playSuccessSound();
+                } else {
+                    addLog(`❌ Error: ${result.message}`, 'error');
+                }
+            } catch (error) {
+                addLog(`❌ Network error: ${error.message}`, 'error');
+            }
+        });
+
+        // Test Receive Webhook Button
+        document.getElementById('test-receive-btn').addEventListener('click', async () => {
+            const testData = {
+                title: "Test: External Webhook",
+                message: "Simulating webhook from Postman/External Service",
+                test_type: "receive_simulation",
+                timestamp: new Date().toISOString(),
+                source: "external"
+            };
+
+            try {
+                addLog(`📥 Simulating external webhook...`, 'info');
+                
+                const response = await fetch('/api/webhook/notification', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                    },
+                    body: JSON.stringify(testData)
+                });
+
+                const result = await response.json();
+                
+                if (response.ok) {
+                    addLog(`✅ External webhook received! ID: ${result.id}`, 'success');
+                    addLog(`📊 Received counter updated`, 'success');
+                    playNotificationSound();
                 } else {
                     addLog(`❌ Error: ${result.message}`, 'error');
                 }
